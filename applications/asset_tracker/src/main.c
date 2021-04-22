@@ -233,8 +233,8 @@ static void shutdown_modem(void)
 int lwm2m_carrier_event_handler(const lwm2m_carrier_event_t *event)
 {
 	switch (event->type) {
-	case LWM2M_CARRIER_EVENT_BSDLIB_INIT:
-		LOG_INF("LWM2M_CARRIER_EVENT_BSDLIB_INIT");
+	case LWM2M_CARRIER_EVENT_MODEM_INIT:
+		LOG_INF("LWM2M_CARRIER_EVENT_MODEM_INIT");
 		k_sem_give(&nrf_modem_lib_initialized);
 		break;
 	case LWM2M_CARRIER_EVENT_CONNECTING:

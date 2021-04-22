@@ -12,8 +12,7 @@
 #include <stdbool.h>
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 /**@file lwm2m_carrier.h
@@ -22,11 +21,11 @@ extern "C"
  * @{
  */
 /** Modem library initialized. */
-#define LWM2M_CARRIER_EVENT_BSDLIB_INIT   1
+#define LWM2M_CARRIER_EVENT_MODEM_INIT	  1
 /** Connecting to the LTE network. */
-#define LWM2M_CARRIER_EVENT_CONNECTING    2
+#define LWM2M_CARRIER_EVENT_CONNECTING	  2
 /** Connected to the LTE network. */
-#define LWM2M_CARRIER_EVENT_CONNECTED     3
+#define LWM2M_CARRIER_EVENT_CONNECTED	  3
 /** Disconnecting from the LTE network. */
 #define LWM2M_CARRIER_EVENT_DISCONNECTING 4
 /** Disconnected from the LTE network. */
@@ -34,17 +33,17 @@ extern "C"
 /** LWM2M carrier bootstrapped. */
 #define LWM2M_CARRIER_EVENT_BOOTSTRAPPED  6
 /** LWM2M carrier registered. */
-#define LWM2M_CARRIER_EVENT_REGISTERED    7
+#define LWM2M_CARRIER_EVENT_REGISTERED	  7
 /** LWM2M carrier operation is deferred. */
-#define LWM2M_CARRIER_EVENT_DEFERRED      8
+#define LWM2M_CARRIER_EVENT_DEFERRED	  8
 /** Modem update started. */
-#define LWM2M_CARRIER_EVENT_FOTA_START    9
+#define LWM2M_CARRIER_EVENT_FOTA_START	  9
 /** Application will reboot. */
-#define LWM2M_CARRIER_EVENT_REBOOT        10
-/**< LTE network is ready to be used. */
-#define LWM2M_CARRIER_EVENT_LTE_READY     11
+#define LWM2M_CARRIER_EVENT_REBOOT	  10
+/** LTE network is ready to be used. */
+#define LWM2M_CARRIER_EVENT_LTE_READY	  11
 /** An error occurred. */
-#define LWM2M_CARRIER_EVENT_ERROR         20
+#define LWM2M_CARRIER_EVENT_ERROR	  20
 
 /**
  * @brief LWM2M carrier library event structure.
@@ -60,9 +59,9 @@ typedef struct {
  * @brief LWM2M carrier library event deferred reason.
  */
 /** No reason given. */
-#define LWM2M_CARRIER_DEFERRED_NO_REASON           0
+#define LWM2M_CARRIER_DEFERRED_NO_REASON	   0
 /** Failed to activate PDN. */
-#define LWM2M_CARRIER_DEFERRED_PDN_ACTIVATE        1
+#define LWM2M_CARRIER_DEFERRED_PDN_ACTIVATE	   1
 /** No route to bootstrap server. */
 #define LWM2M_CARRIER_DEFERRED_BOOTSTRAP_NO_ROUTE  2
 /** Failed to connect to bootstrap server. */
@@ -70,9 +69,9 @@ typedef struct {
 /** Bootstrap sequence not completed. */
 #define LWM2M_CARRIER_DEFERRED_BOOTSTRAP_SEQUENCE  4
 /** No route to server. */
-#define LWM2M_CARRIER_DEFERRED_SERVER_NO_ROUTE     5
+#define LWM2M_CARRIER_DEFERRED_SERVER_NO_ROUTE	   5
 /** Failed to connect to server. */
-#define LWM2M_CARRIER_DEFERRED_SERVER_CONNECT      6
+#define LWM2M_CARRIER_DEFERRED_SERVER_CONNECT	   6
 /** Server registration sequence not completed. */
 #define LWM2M_CARRIER_DEFERRED_SERVER_REGISTRATION 7
 
@@ -89,24 +88,16 @@ typedef struct {
 /**
  * @brief LWM2M carrier library event error codes.
  */
-/** No error. */
-#define LWM2M_CARRIER_ERROR_NO_ERROR        0
-/** Failed to connect to the LTE network. */
-#define LWM2M_CARRIER_ERROR_CONNECT_FAIL    1
-/** Failed to disconnect from the LTE network. */
-#define LWM2M_CARRIER_ERROR_DISCONNECT_FAIL 2
-/** LWM2M carrier bootstrap failed. */
-#define LWM2M_CARRIER_ERROR_BOOTSTRAP       3
-/** Update package rejected. */
-#define LWM2M_CARRIER_ERROR_FOTA_PKG        4
-/** Protocol error. */
-#define LWM2M_CARRIER_ERROR_FOTA_PROTO      5
-/** Connection error. */
-#define LWM2M_CARRIER_ERROR_FOTA_CONN       6
-/** Connection lost. */
-#define LWM2M_CARRIER_ERROR_FOTA_CONN_LOST  7
-/** Update failed. */
-#define LWM2M_CARRIER_ERROR_FOTA_FAIL       8
+#define LWM2M_CARRIER_ERROR_NO_ERROR		0 /**< No error. */
+#define LWM2M_CARRIER_ERROR_CONNECT_FAIL	1 /**< Failed to connect to the LTE network. */
+#define LWM2M_CARRIER_ERROR_DISCONNECT_FAIL	2 /**< Failed to disconnect from the LTE network. */
+#define LWM2M_CARRIER_ERROR_BOOTSTRAP		3 /**< LWM2M carrier bootstrap failed. */
+#define LWM2M_CARRIER_ERROR_FOTA_PKG		4 /**< Update package rejected. */
+#define LWM2M_CARRIER_ERROR_FOTA_PROTO		5 /**< Protocol error. */
+#define LWM2M_CARRIER_ERROR_FOTA_CONN		6 /**< Connection error. */
+#define LWM2M_CARRIER_ERROR_FOTA_CONN_LOST	7 /**< Connection lost. */
+#define LWM2M_CARRIER_ERROR_FOTA_FAIL		8 /**< Update failed. */
+#define LWM2M_CARRIER_ERROR_SERVICE_UNAVAILABLE 9 /**< LWM2M server in maintenance mode. */
 
 /**
  * @brief LWM2M carrier library error event structure.
@@ -115,7 +106,7 @@ typedef struct {
 	/** Error event code. */
 	uint32_t code;
 	/** Error event value. */
-	int32_t  value;
+	int32_t value;
 } lwm2m_carrier_event_error_t;
 /**@} */
 
@@ -127,26 +118,26 @@ typedef struct {
 /**
  * @brief LWM2M device power sources type.
  */
-#define LWM2M_CARRIER_POWER_SOURCE_DC               0
+#define LWM2M_CARRIER_POWER_SOURCE_DC		    0
 #define LWM2M_CARRIER_POWER_SOURCE_INTERNAL_BATTERY 1
 #define LWM2M_CARRIER_POWER_SOURCE_EXTERNAL_BATTERY 2
-#define LWM2M_CARRIER_POWER_SOURCE_ETHERNET         4
-#define LWM2M_CARRIER_POWER_SOURCE_USB              5
-#define LWM2M_CARRIER_POWER_SOURCE_AC               6
-#define LWM2M_CARRIER_POWER_SOURCE_SOLAR            7
+#define LWM2M_CARRIER_POWER_SOURCE_ETHERNET	    4
+#define LWM2M_CARRIER_POWER_SOURCE_USB		    5
+#define LWM2M_CARRIER_POWER_SOURCE_AC		    6
+#define LWM2M_CARRIER_POWER_SOURCE_SOLAR	    7
 
 /**
  * @brief LWM2M device error codes.
  */
-#define LWM2M_CARRIER_ERROR_CODE_NO_ERROR                0
-#define LWM2M_CARRIER_ERROR_CODE_LOW_CHARGE              1
-#define LWM2M_CARRIER_ERROR_CODE_EXTERNAL_SUPPLY_OFF     2
-#define LWM2M_CARRIER_ERROR_CODE_GPS_FAILURE             3
-#define LWM2M_CARRIER_ERROR_CODE_LOW_SIGNAL              4
-#define LWM2M_CARRIER_ERROR_CODE_OUT_OF_MEMORY           5
-#define LWM2M_CARRIER_ERROR_CODE_SMS_FAILURE             6
+#define LWM2M_CARRIER_ERROR_CODE_NO_ERROR		 0
+#define LWM2M_CARRIER_ERROR_CODE_LOW_CHARGE		 1
+#define LWM2M_CARRIER_ERROR_CODE_EXTERNAL_SUPPLY_OFF	 2
+#define LWM2M_CARRIER_ERROR_CODE_GPS_FAILURE		 3
+#define LWM2M_CARRIER_ERROR_CODE_LOW_SIGNAL		 4
+#define LWM2M_CARRIER_ERROR_CODE_OUT_OF_MEMORY		 5
+#define LWM2M_CARRIER_ERROR_CODE_SMS_FAILURE		 6
 #define LWM2M_CARRIER_ERROR_CODE_IP_CONNECTIVITY_FAILURE 7
-#define LWM2M_CARRIER_ERROR_CODE_PERIPHERAL_MALFUNCTION  8
+#define LWM2M_CARRIER_ERROR_CODE_PERIPHERAL_MALFUNCTION	 8
 
 /**
  * @brief LWM2M device battery status.
@@ -154,20 +145,20 @@ typedef struct {
  * @note These values are only valid for the LWM2M Device INTERNAL_BATTERY if
  *       present.
  */
-#define LWM2M_CARRIER_BATTERY_STATUS_NORMAL          0
-#define LWM2M_CARRIER_BATTERY_STATUS_CHARGING        1
+#define LWM2M_CARRIER_BATTERY_STATUS_NORMAL	     0
+#define LWM2M_CARRIER_BATTERY_STATUS_CHARGING	     1
 #define LWM2M_CARRIER_BATTERY_STATUS_CHARGE_COMPLETE 2
-#define LWM2M_CARRIER_BATTERY_STATUS_DAMAGED         3
+#define LWM2M_CARRIER_BATTERY_STATUS_DAMAGED	     3
 #define LWM2M_CARRIER_BATTERY_STATUS_LOW_BATTERY     4
 #define LWM2M_CARRIER_BATTERY_STATUS_NOT_INSTALLED   5
-#define LWM2M_CARRIER_BATTERY_STATUS_UNKNOWN         6
+#define LWM2M_CARRIER_BATTERY_STATUS_UNKNOWN	     6
 
 /**
  * @brief LWM2M portfolio identity types.
  */
-#define LWM2M_CARRIER_IDENTITY_ID           0
+#define LWM2M_CARRIER_IDENTITY_ID	    0
 #define LWM2M_CARRIER_IDENTITY_MANUFACTURER 1
-#define LWM2M_CARRIER_IDENTITY_MODEL        2
+#define LWM2M_CARRIER_IDENTITY_MODEL	    2
 #define LWM2M_CARRIER_IDENTITY_SW_VERSION   3
 
 /**
@@ -220,8 +211,7 @@ void lwm2m_carrier_run(void);
  * @param[out] utc_offset Pointer to UTC offset in minutes.
  * @param[out] tz         Pointer to null-terminated timezone string pointer.
  */
-void lwm2m_carrier_time_read(int32_t *utc_time, int *utc_offset,
-			     const char **tz);
+void lwm2m_carrier_time_read(int32_t *utc_time, int *utc_offset, const char **tz);
 
 /**
  * @brief Function to read current UTC time
@@ -331,8 +321,7 @@ int lwm2m_carrier_event_handler(const lwm2m_carrier_event_t *event);
  * @retval     0         If the available power sources have been set
  *                       successfully.
  */
-int lwm2m_carrier_avail_power_sources_set(const uint8_t *power_sources,
-					  uint8_t power_source_count);
+int lwm2m_carrier_avail_power_sources_set(const uint8_t *power_sources, uint8_t power_source_count);
 
 /**
  * @brief      Set or update the latest voltage measurements made on one of
@@ -351,8 +340,7 @@ int lwm2m_carrier_avail_power_sources_set(const uint8_t *power_sources,
  * @retval     0         If the voltage measurements have been updated
  *                       successfully.
  */
-int lwm2m_carrier_power_source_voltage_set(uint8_t power_source,
-					   int32_t value);
+int lwm2m_carrier_power_source_voltage_set(uint8_t power_source, int32_t value);
 
 /**
  * @brief      Set or update the latest current measurements made on one of
@@ -372,8 +360,7 @@ int lwm2m_carrier_power_source_voltage_set(uint8_t power_source,
  * @retval     0         If the current measurements have been updated
  *                       successfully.
  */
-int lwm2m_carrier_power_source_current_set(uint8_t power_source,
-					   int32_t value);
+int lwm2m_carrier_power_source_current_set(uint8_t power_source, int32_t value);
 
 /**
  * @brief      Set or update the latest battery level (internal battery).
@@ -547,8 +534,8 @@ int lwm2m_carrier_memory_free_read(void);
  * @retval        -ENOMEM        If the provided buffer is too small.
  * @retval        0              If the operation was successful.
  */
-int lwm2m_carrier_identity_read(uint16_t instance_id, uint16_t identity_type,
-					  char *buffer, uint16_t *buffer_len);
+int lwm2m_carrier_identity_read(uint16_t instance_id, uint16_t identity_type, char *buffer,
+				uint16_t *buffer_len);
 
 /**
  * @brief      Set the corresponding Identity field of a Portfolio object
@@ -570,8 +557,7 @@ int lwm2m_carrier_identity_read(uint16_t instance_id, uint16_t identity_type,
  * @retval     0              If the Identity field has been updated
  *                            successfully.
  */
-int lwm2m_carrier_identity_write(uint16_t instance_id, uint16_t identity_type,
-					  const char *value);
+int lwm2m_carrier_identity_write(uint16_t instance_id, uint16_t identity_type, const char *value);
 
 /**
  * @brief      Create a new instance of the Portfolio object.

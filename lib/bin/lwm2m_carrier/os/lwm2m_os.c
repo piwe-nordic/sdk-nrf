@@ -34,8 +34,7 @@
 /* At least 2 sectors */
 #define NVS_SECTOR_COUNT 3
 /* Start address of the filesystem in flash */
-#define NVS_STORAGE_OFFSET \
-	DT_REG_ADDR(DT_NODE_BY_FIXED_PARTITION_LABEL(storage))
+#define NVS_STORAGE_OFFSET DT_REG_ADDR(DT_NODE_BY_FIXED_PARTITION_LABEL(storage))
 
 static struct nvs_fs fs = {
 	.sector_size = NVS_SECTOR_SIZE,
@@ -101,7 +100,8 @@ uint32_t lwm2m_os_rand_get(void)
 
 int lwm2m_os_sem_init(lwm2m_os_sem_t **sem, unsigned int initial_count, unsigned int limit)
 {
-	__ASSERT(lwm2m_os_sems_used < LWM2M_OS_MAX_SEM_COUNT, "Not enough semaphores in glue layer");
+	__ASSERT(lwm2m_os_sems_used < LWM2M_OS_MAX_SEM_COUNT,
+		 "Not enough semaphores in glue layer");
 
 	*sem = (lwm2m_os_sem_t *)&lwm2m_os_sems[lwm2m_os_sems_used];
 
@@ -168,10 +168,8 @@ static struct lwm2m_work lwm2m_works[LWM2M_OS_MAX_TIMER_COUNT];
 
 static void work_handler(struct k_work *work)
 {
-	struct k_delayed_work *delayed_work =
-		CONTAINER_OF(work, struct k_delayed_work, work);
-	struct lwm2m_work *lwm2m_work =
-		CONTAINER_OF(delayed_work, struct lwm2m_work, work_item);
+	struct k_delayed_work *delayed_work = CONTAINER_OF(work, struct k_delayed_work, work);
+	struct lwm2m_work *lwm2m_work = CONTAINER_OF(delayed_work, struct lwm2m_work, work_item);
 
 	lwm2m_work->handler(lwm2m_work);
 }
@@ -182,7 +180,7 @@ lwm2m_os_work_q_t *lwm2m_os_work_q_start(int index, const char *name)
 {
 	__ASSERT(index < LWM2M_OS_MAX_WORK_QS, "Not enough work queues in glue layer");
 
-	if(index >= LWM2M_OS_MAX_WORK_QS){
+	if (index >= LWM2M_OS_MAX_WORK_QS) {
 		return NULL;
 	}
 	lwm2m_os_work_q_t *work_q = (lwm2m_os_work_q_t *)&lwm2m_os_work_qs[index];
@@ -248,7 +246,7 @@ int lwm2m_os_timer_start(lwm2m_os_timer_t *timer, int64_t msec)
 	return k_delayed_work_submit(&work->work_item, K_MSEC(msec));
 }
 
-int lwm2m_os_timer_start_on_q(lwm2m_os_work_q_t *work_q, lwm2m_os_timer_t *timer, int64_t msec )
+int lwm2m_os_timer_start_on_q(lwm2m_os_work_q_t *work_q, lwm2m_os_timer_t *timer, int64_t msec)
 {
 	struct k_work_q *queue = (struct k_work_q *)work_q;
 	struct lwm2m_work *work = (struct lwm2m_work *)timer;
@@ -288,7 +286,20 @@ int64_t lwm2m_os_timer_remaining(lwm2m_os_timer_t *timer)
 
 	/* k_delayed_work_remaining_get() returns int32_t even if CONFIG_TIMEOUT_64BIT is set.
 	 * We have to use the follwing line instead to get the 64bit value. */
-	return k_ticks_to_ms_floor64(z_timeout_remaining(&work->work_item.timeout));
+	return k_ticks_to_ms_floor64(z_timeout_remaining(&work->work_item.work.timeout));
+}
+
+bool lwm2m_os_timer_is_pending(lwm2m_os_timer_t *timer)
+{
+	struct lwm2m_work *work = (struct lwm2m_work *)timer;
+
+	__ASSERT(PART_OF_ARRAY(lwm2m_works, work), "get is_pending on unknown timer");
+
+	if (!PART_OF_ARRAY(lwm2m_works, work)) {
+		return 0;
+	}
+
+	return k_delayed_work_pending(&work->work_item);
 }
 
 /* LWM2M logs. */
@@ -297,10 +308,10 @@ LOG_MODULE_REGISTER(lwm2m, CONFIG_LOG_DEFAULT_LEVEL);
 
 static const uint8_t log_level_lut[] = {
 	LOG_LEVEL_NONE, /* LWM2M_LOG_LEVEL_NONE */
-	LOG_LEVEL_ERR, /* LWM2M_LOG_LEVEL_ERR */
-	LOG_LEVEL_WRN, /* LWM2M_LOG_LEVEL_WRN */
-	LOG_LEVEL_INF, /* LWM2M_LOG_LEVEL_INF */
-	LOG_LEVEL_DBG, /* LWM2M_LOG_LEVEL_TRC */
+	LOG_LEVEL_ERR,	/* LWM2M_LOG_LEVEL_ERR */
+	LOG_LEVEL_WRN,	/* LWM2M_LOG_LEVEL_WRN */
+	LOG_LEVEL_INF,	/* LWM2M_LOG_LEVEL_INF */
+	LOG_LEVEL_DBG,	/* LWM2M_LOG_LEVEL_TRC */
 };
 
 const char *lwm2m_os_log_strdup(const char *str)
@@ -350,16 +361,13 @@ int lwm2m_os_nrf_modem_init(void)
 
 	switch (err) {
 	case MODEM_DFU_RESULT_OK:
-		lwm2m_os_log(LOG_LEVEL_INF,
-			     "Modem firmware update successful.");
-		lwm2m_os_log(LOG_LEVEL_INF,
-			     "Modem will run the new firmware after reboot.");
+		lwm2m_os_log(LOG_LEVEL_INF, "Modem firmware update successful.");
+		lwm2m_os_log(LOG_LEVEL_INF, "Modem will run the new firmware after reboot.");
 		break;
 	case MODEM_DFU_RESULT_UUID_ERROR:
 	case MODEM_DFU_RESULT_AUTH_ERROR:
 		lwm2m_os_log(LOG_LEVEL_ERR, "Modem firmware update failed.");
-		lwm2m_os_log(LOG_LEVEL_ERR,
-			     "Modem will run non-updated firmware on reboot.");
+		lwm2m_os_log(LOG_LEVEL_ERR, "Modem will run non-updated firmware on reboot.");
 		break;
 	case MODEM_DFU_RESULT_HARDWARE_ERROR:
 	case MODEM_DFU_RESULT_INTERNAL_ERROR:
@@ -401,8 +409,7 @@ int lwm2m_os_at_init(void)
 	return 0;
 }
 
-int lwm2m_os_at_notif_register_handler(void *context,
-				       lwm2m_os_at_cmd_handler_t handler)
+int lwm2m_os_at_notif_register_handler(void *context, lwm2m_os_at_cmd_handler_t handler)
 {
 	return at_notif_register_handler(context, handler);
 }
@@ -412,8 +419,7 @@ int lwm2m_os_at_cmd_write(const char *const cmd, char *buf, size_t buf_len)
 	return at_cmd_write(cmd, buf, buf_len, (enum at_cmd_state *)NULL);
 }
 
-static void at_params_list_get(struct at_param_list *dst,
-			struct lwm2m_os_at_param_list *src)
+static void at_params_list_get(struct at_param_list *dst, struct lwm2m_os_at_param_list *src)
 {
 	struct at_param *src_param = src->params;
 
@@ -426,16 +432,13 @@ static void at_params_list_get(struct at_param_list *dst,
 		case AT_PARAM_TYPE_EMPTY:
 			break;
 		case AT_PARAM_TYPE_NUM_INT:
-			dst->params[i].value.int_val =
-				src_param[i].value.int_val;
+			dst->params[i].value.int_val = src_param[i].value.int_val;
 			break;
 		case AT_PARAM_TYPE_STRING:
-			dst->params[i].value.str_val =
-				src_param[i].value.str_val;
+			dst->params[i].value.str_val = src_param[i].value.str_val;
 			break;
 		case AT_PARAM_TYPE_ARRAY:
-			dst->params[i].value.array_val =
-				src_param[i].value.array_val;
+			dst->params[i].value.array_val = src_param[i].value.array_val;
 			break;
 		default:
 			break;
@@ -443,8 +446,7 @@ static void at_params_list_get(struct at_param_list *dst,
 	}
 }
 
-static void at_params_list_translate(struct lwm2m_os_at_param_list *dst,
-			struct at_param_list *src)
+static void at_params_list_translate(struct lwm2m_os_at_param_list *dst, struct at_param_list *src)
 {
 	struct at_param *dst_param = dst->params;
 
@@ -457,12 +459,10 @@ static void at_params_list_translate(struct lwm2m_os_at_param_list *dst,
 		case AT_PARAM_TYPE_EMPTY:
 			break;
 		case AT_PARAM_TYPE_NUM_INT:
-			dst_param[i].value.int_val =
-				src->params[i].value.int_val;
+			dst_param[i].value.int_val = src->params[i].value.int_val;
 			break;
 		case AT_PARAM_TYPE_STRING:
-			dst_param[i].value.str_val =
-				src->params[i].value.str_val;
+			dst_param[i].value.str_val = src->params[i].value.str_val;
 			/* Detach this pointer from the source list
 			 * so that it's not freed when we free at_param_list.
 			 */
@@ -472,8 +472,7 @@ static void at_params_list_translate(struct lwm2m_os_at_param_list *dst,
 			/* Detach this pointer from the source list
 			 * so that it's not freed when we free at_param_list.
 			 */
-			dst_param[i].value.array_val =
-				src->params[i].value.array_val;
+			dst_param[i].value.array_val = src->params[i].value.array_val;
 			src->params[i].value.array_val = NULL;
 			break;
 		default:
@@ -482,8 +481,7 @@ static void at_params_list_translate(struct lwm2m_os_at_param_list *dst,
 	}
 }
 
-int lwm2m_os_at_params_list_init(struct lwm2m_os_at_param_list *list,
-				 size_t max_params_count)
+int lwm2m_os_at_params_list_init(struct lwm2m_os_at_param_list *list, size_t max_params_count)
 {
 	if (list == NULL) {
 		return -EINVAL;
@@ -510,8 +508,7 @@ void lwm2m_os_at_params_list_free(struct lwm2m_os_at_param_list *list)
 	at_params_list_free(&tmp_list);
 }
 
-int lwm2m_os_at_params_int_get(struct lwm2m_os_at_param_list *list,
-			       size_t index, uint32_t *value)
+int lwm2m_os_at_params_int_get(struct lwm2m_os_at_param_list *list, size_t index, uint32_t *value)
 {
 	int err;
 	struct at_param_list tmp_list;
@@ -530,8 +527,7 @@ int lwm2m_os_at_params_int_get(struct lwm2m_os_at_param_list *list,
 	return err;
 }
 
-int lwm2m_os_at_params_short_get(struct lwm2m_os_at_param_list *list,
-				 size_t index, uint16_t *value)
+int lwm2m_os_at_params_short_get(struct lwm2m_os_at_param_list *list, size_t index, uint16_t *value)
 {
 	int err;
 	struct at_param_list tmp_list;
@@ -550,8 +546,8 @@ int lwm2m_os_at_params_short_get(struct lwm2m_os_at_param_list *list,
 	return err;
 }
 
-int lwm2m_os_at_params_string_get(struct lwm2m_os_at_param_list *list,
-				  size_t index, char *value, size_t *len)
+int lwm2m_os_at_params_string_get(struct lwm2m_os_at_param_list *list, size_t index, char *value,
+				  size_t *len)
 {
 	int err;
 	struct at_param_list tmp_list;
@@ -570,9 +566,8 @@ int lwm2m_os_at_params_string_get(struct lwm2m_os_at_param_list *list,
 	return err;
 }
 
-int lwm2m_os_at_parser_params_from_str(
-	const char *at_params_str, char **next_param_str,
-	struct lwm2m_os_at_param_list *const list)
+int lwm2m_os_at_parser_params_from_str(const char *at_params_str, char **next_param_str,
+				       struct lwm2m_os_at_param_list *const list)
 {
 	int err;
 	struct at_param_list tmp_list;
@@ -582,8 +577,7 @@ int lwm2m_os_at_parser_params_from_str(
 		return err;
 	}
 
-	err = at_parser_params_from_str(at_params_str, next_param_str,
-					&tmp_list);
+	err = at_parser_params_from_str(at_params_str, next_param_str, &tmp_list);
 
 	at_params_list_translate(list, &tmp_list);
 
@@ -592,8 +586,7 @@ int lwm2m_os_at_parser_params_from_str(
 	return err;
 }
 
-int lwm2m_os_at_params_valid_count_get(
-	struct lwm2m_os_at_param_list *list)
+int lwm2m_os_at_params_valid_count_get(struct lwm2m_os_at_param_list *list)
 {
 	int err;
 	struct at_param_list tmp_list;
@@ -617,8 +610,7 @@ int lwm2m_os_at_params_valid_count_get(
 static struct download_client http_downloader;
 static lwm2m_os_download_callback_t lwm2m_os_lib_callback;
 
-int lwm2m_os_download_connect(const char *host,
-			      const struct lwm2m_os_download_cfg *cfg)
+int lwm2m_os_download_connect(const char *host, const struct lwm2m_os_download_cfg *cfg)
 {
 	struct download_client_cfg config = {
 		.sec_tag = cfg->sec_tag,
@@ -633,9 +625,8 @@ int lwm2m_os_download_disconnect(void)
 	return download_client_disconnect(&http_downloader);
 }
 
-static void
-download_client_evt_translate(const struct download_client_evt *event,
-			      struct lwm2m_os_download_evt *lwm2m_os_event)
+static void download_client_evt_translate(const struct download_client_evt *event,
+					  struct lwm2m_os_download_evt *lwm2m_os_event)
 {
 	switch (event->id) {
 	case DOWNLOAD_CLIENT_EVT_FRAGMENT:
@@ -811,36 +802,29 @@ const char *lwm2m_os_strerror(void)
 	return strerror(errno);
 }
 
-int lwm2m_os_sec_ca_chain_exists(uint32_t sec_tag, bool *exists,
-				 uint8_t *flags)
+int lwm2m_os_sec_ca_chain_exists(uint32_t sec_tag, bool *exists, uint8_t *flags)
 {
-	return modem_key_mgmt_exists(sec_tag,
-		MODEM_KEY_MGMT_CRED_TYPE_CA_CHAIN, exists, flags);
+	return modem_key_mgmt_exists(sec_tag, MODEM_KEY_MGMT_CRED_TYPE_CA_CHAIN, exists, flags);
 }
 
 int lwm2m_os_sec_ca_chain_cmp(uint32_t sec_tag, const void *buf, size_t len)
 {
-	return modem_key_mgmt_cmp(sec_tag,
-		MODEM_KEY_MGMT_CRED_TYPE_CA_CHAIN, buf, len);
+	return modem_key_mgmt_cmp(sec_tag, MODEM_KEY_MGMT_CRED_TYPE_CA_CHAIN, buf, len);
 }
 
 int lwm2m_os_sec_ca_chain_write(uint32_t sec_tag, const void *buf, size_t len)
 {
-	return modem_key_mgmt_write(sec_tag,
-		MODEM_KEY_MGMT_CRED_TYPE_CA_CHAIN, buf, len);
+	return modem_key_mgmt_write(sec_tag, MODEM_KEY_MGMT_CRED_TYPE_CA_CHAIN, buf, len);
 }
 
-int lwm2m_os_sec_psk_exists(uint32_t sec_tag, bool *exists,
-			    uint8_t *perm_flags)
+int lwm2m_os_sec_psk_exists(uint32_t sec_tag, bool *exists, uint8_t *perm_flags)
 {
-	return modem_key_mgmt_exists(sec_tag, MODEM_KEY_MGMT_CRED_TYPE_PSK,
-				     exists, perm_flags);
+	return modem_key_mgmt_exists(sec_tag, MODEM_KEY_MGMT_CRED_TYPE_PSK, exists, perm_flags);
 }
 
 int lwm2m_os_sec_psk_write(uint32_t sec_tag, const void *buf, uint16_t len)
 {
-	return modem_key_mgmt_write(sec_tag, MODEM_KEY_MGMT_CRED_TYPE_PSK, buf,
-				    len);
+	return modem_key_mgmt_write(sec_tag, MODEM_KEY_MGMT_CRED_TYPE_PSK, buf, len);
 }
 
 int lwm2m_os_sec_psk_delete(uint32_t sec_tag)
@@ -848,22 +832,18 @@ int lwm2m_os_sec_psk_delete(uint32_t sec_tag)
 	return modem_key_mgmt_delete(sec_tag, MODEM_KEY_MGMT_CRED_TYPE_PSK);
 }
 
-int lwm2m_os_sec_identity_exists(uint32_t sec_tag, bool *exists,
-				 uint8_t *perm_flags)
+int lwm2m_os_sec_identity_exists(uint32_t sec_tag, bool *exists, uint8_t *perm_flags)
 {
-	return modem_key_mgmt_exists(sec_tag,
-		MODEM_KEY_MGMT_CRED_TYPE_IDENTITY, exists, perm_flags);
+	return modem_key_mgmt_exists(sec_tag, MODEM_KEY_MGMT_CRED_TYPE_IDENTITY, exists,
+				     perm_flags);
 }
 
-int lwm2m_os_sec_identity_write(uint32_t sec_tag, const void *buf,
-				uint16_t len)
+int lwm2m_os_sec_identity_write(uint32_t sec_tag, const void *buf, uint16_t len)
 {
-	return modem_key_mgmt_write(sec_tag, MODEM_KEY_MGMT_CRED_TYPE_IDENTITY,
-				    buf, len);
+	return modem_key_mgmt_write(sec_tag, MODEM_KEY_MGMT_CRED_TYPE_IDENTITY, buf, len);
 }
 
 int lwm2m_os_sec_identity_delete(uint32_t sec_tag)
 {
-	return modem_key_mgmt_delete(sec_tag,
-				     MODEM_KEY_MGMT_CRED_TYPE_IDENTITY);
+	return modem_key_mgmt_delete(sec_tag, MODEM_KEY_MGMT_CRED_TYPE_IDENTITY);
 }

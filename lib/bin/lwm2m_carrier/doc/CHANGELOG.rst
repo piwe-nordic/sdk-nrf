@@ -22,8 +22,8 @@ For certification status, see `Mobile network operator certifications`_.
 Changes
 =======
 
-*
-*
+* Renamed the event :c:macro:`LWM2M_CARRIER_BSDLIB_INIT` to :c:macro:`LWM2M_CARRIER_EVENT_MODEM_INIT`
+* New error code :c:macro:`LWM2M_CARRIER_ERROR_SERVICE_UNAVAILABLE` indicates that the LwM2M server is unavailable due to maintenance.
 
 liblwm2m_carrier 0.10.2
 ***********************

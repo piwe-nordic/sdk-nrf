@@ -39,6 +39,8 @@ void print_err(const lwm2m_carrier_event_t *evt)
 			"Connection to remote server lost",
 		[LWM2M_CARRIER_ERROR_FOTA_FAIL] =
 			"Modem firmware update failed",
+		[LWM2M_CARRIER_ERROR_SERVICE_UNAVAILABLE] =
+			"LWM2M server in maintenance mode",
 	};
 
 	__ASSERT(PART_OF_ARRAY(strerr[err->code]),
@@ -81,8 +83,8 @@ void print_deferred(const lwm2m_carrier_event_t *evt)
 int lwm2m_carrier_event_handler(const lwm2m_carrier_event_t *event)
 {
 	switch (event->type) {
-	case LWM2M_CARRIER_EVENT_BSDLIB_INIT:
-		printk("LWM2M_CARRIER_EVENT_BSDLIB_INIT\n");
+	case LWM2M_CARRIER_EVENT_MODEM_INIT:
+		printk("LWM2M_CARRIER_EVENT_MODEM_INIT\n");
 		break;
 	case LWM2M_CARRIER_EVENT_CONNECTING:
 		printk("LWM2M_CARRIER_EVENT_CONNECTING\n");

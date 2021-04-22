@@ -25,7 +25,7 @@
 /**
  * @brief Maximum number of timers that the system must support.
  */
-#define LWM2M_OS_MAX_TIMER_COUNT (7 + (LWM2M_OS_MAX_WORK_QS * 5))
+#define LWM2M_OS_MAX_TIMER_COUNT (5 + (LWM2M_OS_MAX_WORK_QS * 2))
 
 typedef void lwm2m_os_work_q_t;
 typedef void lwm2m_os_timer_t;
@@ -39,10 +39,10 @@ typedef void lwm2m_os_timer_t;
 typedef void lwm2m_os_sem_t;
 
 #define LWM2M_LOG_LEVEL_NONE 0
-#define LWM2M_LOG_LEVEL_ERR 1
-#define LWM2M_LOG_LEVEL_WRN 2
-#define LWM2M_LOG_LEVEL_INF 3
-#define LWM2M_LOG_LEVEL_TRC 4
+#define LWM2M_LOG_LEVEL_ERR  1
+#define LWM2M_LOG_LEVEL_WRN  2
+#define LWM2M_LOG_LEVEL_INF  3
+#define LWM2M_LOG_LEVEL_TRC  4
 
 /**
  * @brief Range of the non-volatile storage identifiers used by the library.
@@ -52,7 +52,7 @@ typedef void lwm2m_os_sem_t;
  *        or overwrite entries used by the library.
  */
 #define LWM2M_OS_STORAGE_BASE 0xCA00
-#define LWM2M_OS_STORAGE_END 0xCAFF
+#define LWM2M_OS_STORAGE_END  0xCAFF
 
 /**
  * @brief Timer callback function.
@@ -77,8 +77,8 @@ typedef void (*lwm2m_os_at_cmd_handler_t)(void *ctx, const char *response);
  * @{
  */
 #define LWM2M_OS_DOWNLOAD_EVT_FRAGMENT 0
-#define LWM2M_OS_DOWNLOAD_EVT_ERROR 1
-#define LWM2M_OS_DOWNLOAD_EVT_DONE 2
+#define LWM2M_OS_DOWNLOAD_EVT_ERROR    1
+#define LWM2M_OS_DOWNLOAD_EVT_DONE     2
 /**@} */
 
 /**
@@ -110,8 +110,7 @@ struct lwm2m_os_download_cfg {
 /**
  * @brief Download client asynchronous event handler.
  */
-typedef int (*lwm2m_os_download_callback_t)(
-	const struct lwm2m_os_download_evt *event);
+typedef int (*lwm2m_os_download_callback_t)(const struct lwm2m_os_download_evt *event);
 
 /**
  * @brief Initialize the LWM2M OS layer.
@@ -253,7 +252,7 @@ int lwm2m_os_timer_start(lwm2m_os_timer_t *timer, int64_t timeout);
  * @retval -EINVAL Work item is being processed or has completed its work.
  * @retval -EADDRINUSE Work item is pending on a different workqueue.
  */
-int lwm2m_os_timer_start_on_q(lwm2m_os_work_q_t *work_q, lwm2m_os_timer_t *timer, int64_t msec );
+int lwm2m_os_timer_start_on_q(lwm2m_os_work_q_t *work_q, lwm2m_os_timer_t *timer, int64_t msec);
 
 /**
  * @brief Cancel a timer run.
@@ -270,6 +269,15 @@ void lwm2m_os_timer_cancel(lwm2m_os_timer_t *timer);
  * @retval Time remaining in ms.
  */
 int64_t lwm2m_os_timer_remaining(lwm2m_os_timer_t *timer);
+
+/**
+ * @brief Check if a timer task is pending.
+ *
+ * @param timer Timer task.
+ *
+ * @retval true if a timer task is pending.
+ */
+bool lwm2m_os_timer_is_pending(lwm2m_os_timer_t *timer);
 
 /**
  * @brief Create a string copy for a logger subsystem.
@@ -314,8 +322,7 @@ int lwm2m_os_at_init(void);
 /**
  * @brief Set AT command global notification handler.
  */
-int lwm2m_os_at_notif_register_handler(void *context,
-				       lwm2m_os_at_cmd_handler_t handler);
+int lwm2m_os_at_notif_register_handler(void *context, lwm2m_os_at_cmd_handler_t handler);
 
 /**
  * @brief Send an AT command and receive response immediately.
@@ -330,26 +337,24 @@ void lwm2m_os_at_params_list_free(struct lwm2m_os_at_param_list *list);
 /**
  * @brief Create a list of AT parameters.
  */
-int lwm2m_os_at_params_list_init(struct lwm2m_os_at_param_list *list,
-				 size_t max_params_count);
+int lwm2m_os_at_params_list_init(struct lwm2m_os_at_param_list *list, size_t max_params_count);
 
 /**
  * @brief Get a parameter value as an integer number.
  */
-int lwm2m_os_at_params_int_get(struct lwm2m_os_at_param_list *list,
-			       size_t index, uint32_t *value);
+int lwm2m_os_at_params_int_get(struct lwm2m_os_at_param_list *list, size_t index, uint32_t *value);
 
 /**
  * @brief Get a parameter value as a short number.
  */
-int lwm2m_os_at_params_short_get(struct lwm2m_os_at_param_list *list,
-				 size_t index, uint16_t *value);
+int lwm2m_os_at_params_short_get(struct lwm2m_os_at_param_list *list, size_t index,
+				 uint16_t *value);
 
 /**
  * @brief Get a parameter value as a string.
  */
-int lwm2m_os_at_params_string_get(struct lwm2m_os_at_param_list *list,
-				  size_t index, char *value, size_t *len);
+int lwm2m_os_at_params_string_get(struct lwm2m_os_at_param_list *list, size_t index, char *value,
+				  size_t *len);
 
 /**
  * @brief Clear/reset all parameter types and values.
@@ -359,21 +364,18 @@ int lwm2m_os_at_params_list_clear(struct lwm2m_os_at_param_list *list);
 /**
  * @brief Parse AT command or response parameters from a string.
  */
-int lwm2m_os_at_parser_params_from_str(
-	const char *at_params_str, char **next_param_str,
-	struct lwm2m_os_at_param_list *const list);
+int lwm2m_os_at_parser_params_from_str(const char *at_params_str, char **next_param_str,
+				       struct lwm2m_os_at_param_list *const list);
 
 /**
  * @brief Get the number of valid parameters in the list.
  */
-int lwm2m_os_at_params_valid_count_get(
-	struct lwm2m_os_at_param_list *list);
+int lwm2m_os_at_params_valid_count_get(struct lwm2m_os_at_param_list *list);
 
 /**
  * @brief Establish a connection with the server.
  */
-int lwm2m_os_download_connect(const char *host,
-			      const struct lwm2m_os_download_cfg *cfg);
+int lwm2m_os_download_connect(const char *host, const struct lwm2m_os_download_cfg *cfg);
 
 /**
  * @brief Disconnect from the server.
@@ -435,8 +437,7 @@ const char *lwm2m_os_strerror(void);
  * @retval -ENOBUFS Insufficient memory.
  * @retval -EPERM   Insufficient permissions.
  */
-int lwm2m_os_sec_ca_chain_exists(uint32_t sec_tag, bool *exists,
-				 uint8_t *perm);
+int lwm2m_os_sec_ca_chain_exists(uint32_t sec_tag, bool *exists, uint8_t *perm);
 
 /**
  * @brief Compare a certificate chain.
@@ -487,8 +488,7 @@ int lwm2m_os_sec_ca_chain_write(uint32_t sec_tag, const void *buf, size_t len);
  * @retval -EPERM   Insufficient permissions.
  * @retval -EIO     Internal error.
  */
-int lwm2m_os_sec_psk_exists(uint32_t sec_tag, bool *exists,
-			    uint8_t *perm_flags);
+int lwm2m_os_sec_psk_exists(uint32_t sec_tag, bool *exists, uint8_t *perm_flags);
 
 /**
  * @brief Provision a new pre-shared key or update an existing one.
@@ -544,8 +544,7 @@ int lwm2m_os_sec_psk_delete(uint32_t sec_tag);
  * @retval -EPERM   Insufficient permissions.
  * @retval -EIO     Internal error.
  */
-int lwm2m_os_sec_identity_exists(uint32_t sec_tag, bool *exists,
-				 uint8_t *perm_flags);
+int lwm2m_os_sec_identity_exists(uint32_t sec_tag, bool *exists, uint8_t *perm_flags);
 
 /**
  * @brief Provision a new identity credential or update an existing one.
@@ -566,8 +565,7 @@ int lwm2m_os_sec_identity_exists(uint32_t sec_tag, bool *exists,
  * @retval -EPERM   Insufficient permissions.
  * @retval -EIO     Internal error.
  */
-int lwm2m_os_sec_identity_write(uint32_t sec_tag, const void *buf,
-				uint16_t len);
+int lwm2m_os_sec_identity_write(uint32_t sec_tag, const void *buf, uint16_t len);
 
 /**
  * @brief Delete identity credential.
