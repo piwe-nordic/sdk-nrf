@@ -25,7 +25,7 @@
 /**
  * @brief Maximum number of timers that the system must support.
  */
-#define LWM2M_OS_MAX_TIMER_COUNT (5 + (LWM2M_OS_MAX_WORK_QS * 2))
+#define LWM2M_OS_MAX_TIMER_COUNT (6 + (LWM2M_OS_MAX_WORK_QS * 2))
 
 typedef void lwm2m_os_work_q_t;
 typedef void lwm2m_os_timer_t;
@@ -33,7 +33,7 @@ typedef void lwm2m_os_timer_t;
 /**
  * @brief Maximum number of semaphores that the system must support.
  */
-#define LWM2M_OS_MAX_SEM_COUNT 7
+#define LWM2M_OS_MAX_SEM_COUNT 10
 
 /* pointer to semaphore object */
 typedef void lwm2m_os_sem_t;
@@ -43,6 +43,10 @@ typedef void lwm2m_os_sem_t;
 #define LWM2M_LOG_LEVEL_WRN  2
 #define LWM2M_LOG_LEVEL_INF  3
 #define LWM2M_LOG_LEVEL_TRC  4
+
+#define LWM2M_OS_LTE_MODE_NONE   -1
+#define LWM2M_OS_LTE_MODE_CAT_M1  6
+#define LWM2M_OS_LTE_MODE_CAT_NB1 7
 
 /**
  * @brief Range of the non-volatile storage identifiers used by the library.
@@ -58,6 +62,41 @@ typedef void lwm2m_os_sem_t;
  * @brief Timer callback function.
  */
 typedef void (*lwm2m_os_timer_handler_t)(void *timer);
+
+struct lwm2m_os_sms_deliver_address {
+	char   *address_str;
+	uint8_t length;
+};
+
+struct lwm2m_os_sms_udh_app_port {
+	bool present;
+	uint16_t dest_port;
+	uint16_t src_port;
+};
+
+struct lwm2m_os_sms_deliver_header {
+	struct lwm2m_os_sms_deliver_address originating_address;
+	struct lwm2m_os_sms_udh_app_port    app_port;
+};
+
+union lwm2m_os_sms_header {
+	struct lwm2m_os_sms_deliver_header deliver;
+};
+
+/** @brief SMS PDU data. */
+struct lwm2m_os_sms_data {
+	/** SMS header. */
+	union lwm2m_os_sms_header header;
+	/** Length of the data in data buffer. */
+	int payload_len;
+	/** SMS message data. */
+	char *payload;
+};
+
+/**
+ * @brief SMS subscriber callback function.
+ */
+typedef void (*lwm2m_os_sms_callback_t)(struct lwm2m_os_sms_data *const data, void *context);
 
 /**
  * @brief List of AT parameters that compose an AT command or response.
@@ -103,14 +142,125 @@ struct lwm2m_os_download_evt {
  */
 struct lwm2m_os_download_cfg {
 	int sec_tag;
-	const char *apn;
 	int port;
+	int pdn_id;
 };
 
 /**
  * @brief Download client asynchronous event handler.
  */
 typedef int (*lwm2m_os_download_callback_t)(const struct lwm2m_os_download_evt *event);
+
+/** @brief PDN family */
+enum lwm2m_os_pdn_fam {
+	LWM2M_OS_PDN_FAM_IPV4,
+	LWM2M_OS_PDN_FAM_IPV6,
+	LWM2M_OS_PDN_FAM_IPV4V6,
+};
+
+/** @brief PDN event */
+enum lwm2m_os_pdn_event {
+	LWM2M_OS_PDN_EVENT_CNEC_ESM,
+	LWM2M_OS_PDN_EVENT_ACTIVATED,
+	LWM2M_OS_PDN_EVENT_DEACTIVATED,
+	LWM2M_OS_PDN_EVENT_IPV6_UP,
+	LWM2M_OS_PDN_EVENT_IPV6_DOWN,
+};
+
+/**
+ * @brief PDN event handler.
+ *
+ * If assigned during PDP context creation, the event handler will receive
+ * status information relative to the Packet Data Network connection,
+ * as reported by the AT notifications CNEC and GGEV.
+ *
+ * This handler is executed by the same context that dispatches AT notifications.
+ */
+typedef void (*lwm2m_os_pdn_event_handler_t)
+	(uint8_t cid, enum lwm2m_os_pdn_event event, int reason);
+
+/**
+ * @brief Initialize the PDN functionality.
+ * @return int Zero on success or an errno otherwise.
+ */
+int lwm2m_os_pdn_init(void);
+
+/**
+ * @brief Create a Packet Data Protocol (PDP) context.
+ *
+ * If a callback is provided via the @c cb parameter,
+ * generate events from the CNEC and GGEV AT notifications to report
+ * state of the Packet Data Network (PDN) connection.
+ *
+ * @param[out] cid The ID of the new PDP context.
+ * @param cb Optional event handler.
+ * @return int Zero on success or an errno otherwise.
+ */
+int lwm2m_os_pdn_ctx_create(uint8_t *cid, lwm2m_os_pdn_event_handler_t cb);
+
+/**
+ * @brief Configure a Packet Data Protocol context.
+ *
+ * @param cid The PDP context to configure.
+ * @param apn The Access Point Name to configure the PDP context with.
+ * @param family The family to configure the PDN context for.
+ * @return int Zero on success or an errno otherwise.
+ */
+int lwm2m_os_pdn_ctx_configure(uint8_t cid, const char *apn, enum lwm2m_os_pdn_fam family);
+
+/**
+ * @brief Destroy a Packet Data Protocol context.
+ *
+ * @param cid The PDP context to destroy.
+ * @return int Zero on success or an errno otherwise.
+ */
+int lwm2m_os_pdn_ctx_destroy(uint8_t cid);
+
+/**
+ * @brief Activate a Packet Data Network (PDN) connection.
+ *
+ * @param cid The PDP context ID to activate a connection for.
+ * @param[out] esm If provided, the function will block to return
+ *		   the ESM error reason.
+ * @return int Zero on success or an errno otherwise.
+ */
+int lwm2m_os_pdn_activate(uint8_t cid, int *esm);
+
+/**
+ * @brief Deactivate a Packet Data Network (PDN) connection.
+ *
+ * @param cid The PDP context ID.
+ * @return int Zero on success or an errno otherwise.
+ */
+int lwm2m_os_pdn_deactivate(uint8_t cid);
+
+/**
+ * @brief Retrieve the PDN ID for a given PDP Context.
+ *
+ * The PDN ID can be used to route traffic through a Packet Data Network.
+ *
+ * @param cid The context ID of the PDN connection.
+ * @return int Zero on success or an errno otherwise.
+ */
+int lwm2m_os_pdn_id_get(uint8_t cid);
+
+/**
+ * @brief Retrieve the default Access Point Name (APN).
+ *
+ * The default APN is the APN of the default PDP context (zero).
+ *
+ * @param buf The buffer to copy the APN into.
+ * @param len The size of the output buffer.
+ * @return int Zero on success or an errno otherwise.
+ */
+int lwm2m_os_pdn_default_apn_get(char *buf, size_t len);
+
+/**
+ * @brief Set a callback for events pertaining to the default PDP context (zero).
+ *
+ * @param cb The PDN event handler.
+ */
+int lwm2m_os_pdn_default_callback_set(lwm2m_os_pdn_event_handler_t cb);
 
 /**
  * @brief Initialize the LWM2M OS layer.
@@ -296,7 +446,7 @@ void lwm2m_os_log(int level, const char *fmt, ...);
  * @param data Data to dump.
  * @param len  Data length.
  */
-void lwm2m_os_logdump(const char *msg, const void *data, size_t len);
+void lwm2m_os_logdump(int level, const char *msg, const void *data, size_t len);
 
 /**
  * @brief Initialize modem library.
@@ -320,9 +470,29 @@ int lwm2m_os_nrf_modem_shutdown(void);
 int lwm2m_os_at_init(void);
 
 /**
+ * @brief Initialize SMS subscriber library.
+ */
+int lwm2m_os_sms_init(void);
+
+/**
+ * @brief Uninitialize SMS subscriber library.
+ */
+void lwm2m_os_sms_uninit(void);
+
+/**
  * @brief Set AT command global notification handler.
  */
 int lwm2m_os_at_notif_register_handler(void *context, lwm2m_os_at_cmd_handler_t handler);
+
+/**
+ * @brief Register as an SMS client/listener.
+ */
+int lwm2m_os_sms_client_register(lwm2m_os_sms_callback_t lib_callback, void *context);
+
+/**
+ * @brief degister as an SMS client/listener.
+ */
+void lwm2m_os_sms_client_deregister(int handle);
 
 /**
  * @brief Send an AT command and receive response immediately.
@@ -413,6 +583,15 @@ int lwm2m_os_lte_link_down(void);
  * @brief Set the modem to power off mode.
  */
 int lwm2m_os_lte_power_down(void);
+
+/*
+ * @brief get system mode from modem.
+ *
+ * @retval LWM2M_OS_LTE_MODE_NONE    Not connected
+ * @retval LWM2M_OS_LTE_MODE_CAT_M1  Cat-M1 (LTE-FDD)
+ * @retval LWM2M_OS_LTE_MODE_CAT_NB1 Cat-NB1 (NB-IOT)
+ */
+int32_t lwm2m_os_lte_mode_get(void);
 
 /**
  * @brief Translate the error number.

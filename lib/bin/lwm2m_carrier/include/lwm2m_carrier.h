@@ -44,8 +44,8 @@ extern "C" {
 #define LWM2M_CARRIER_EVENT_LTE_READY	  11
 /** An error occurred. */
 #define LWM2M_CARRIER_EVENT_ERROR	  20
-/**< CA certificates need to be initialized. */
-#define LWM2M_CARRIER_EVENT_CERTS_INIT    30
+/** CA certificates need to be initialized. */
+#define LWM2M_CARRIER_EVENT_CERTS_INIT	  30
 
 /**
  * @brief LWM2M carrier library event structure.
@@ -100,6 +100,7 @@ typedef struct {
 #define LWM2M_CARRIER_ERROR_FOTA_CONN_LOST	7 /**< Connection lost. */
 #define LWM2M_CARRIER_ERROR_FOTA_FAIL		8 /**< Update failed. */
 #define LWM2M_CARRIER_ERROR_SERVICE_UNAVAILABLE 9 /**< LWM2M server in maintenance mode. */
+#define LWM2M_CARRIER_ERROR_CONFIGURATION      10 /**< Illegal object configuration detected. */
 
 /**
  * @brief LWM2M carrier library error event structure.

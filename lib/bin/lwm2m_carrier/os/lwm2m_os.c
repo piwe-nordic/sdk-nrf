@@ -11,16 +11,19 @@
 #include <stdbool.h>
 #include <zephyr.h>
 #include <string.h>
+#include <nrf_modem.h>
 #include <modem/at_cmd.h>
 #include <modem/at_notif.h>
 #include <modem/at_cmd_parser.h>
 #include <modem/at_params.h>
-#include <nrf_modem.h>
 #include <modem/lte_lc.h>
+#include <modem/pdn.h>
 #include <modem/nrf_modem_lib.h>
 #include <modem/modem_key_mgmt.h>
+#include <modem/sms.h>
 #include <net/download_client.h>
 #include <power/reboot.h>
+#include <sys/__assert.h>
 #include <sys/util.h>
 #include <toolchain.h>
 #include <fs/nvs.h>
@@ -47,6 +50,8 @@ struct k_work_q lwm2m_os_work_qs[LWM2M_OS_MAX_WORK_QS];
 
 static struct k_sem lwm2m_os_sems[LWM2M_OS_MAX_SEM_COUNT];
 static uint8_t lwm2m_os_sems_used;
+
+static K_MUTEX_DEFINE(at_mutex);
 
 int lwm2m_os_init(void)
 {
@@ -100,6 +105,10 @@ uint32_t lwm2m_os_rand_get(void)
 
 int lwm2m_os_sem_init(lwm2m_os_sem_t **sem, unsigned int initial_count, unsigned int limit)
 {
+	if (PART_OF_ARRAY(lwm2m_os_sems, (struct k_sem *)*sem)) {
+		goto reinit;
+	}
+
 	__ASSERT(lwm2m_os_sems_used < LWM2M_OS_MAX_SEM_COUNT,
 		 "Not enough semaphores in glue layer");
 
@@ -107,6 +116,7 @@ int lwm2m_os_sem_init(lwm2m_os_sem_t **sem, unsigned int initial_count, unsigned
 
 	lwm2m_os_sems_used++;
 
+reinit:
 	return k_sem_init((struct k_sem *)*sem, initial_count, limit);
 }
 
@@ -285,7 +295,8 @@ int64_t lwm2m_os_timer_remaining(lwm2m_os_timer_t *timer)
 	}
 
 	/* k_delayed_work_remaining_get() returns int32_t even if CONFIG_TIMEOUT_64BIT is set.
-	 * We have to use the follwing line instead to get the 64bit value. */
+	 * We have to use the following line instead to get the 64bit value.
+	 */
 	return k_ticks_to_ms_floor64(z_timeout_remaining(&work->work_item.work.timeout));
 }
 
@@ -340,10 +351,9 @@ void lwm2m_os_log(int level, const char *fmt, ...)
 	}
 }
 
-void lwm2m_os_logdump(const char *str, const void *data, size_t len)
+void lwm2m_os_logdump(int level, const char *str, const void *data, size_t len)
 {
 	if (IS_ENABLED(CONFIG_LOG)) {
-		int level = LOG_LEVEL_INF;
 		struct log_msg_ids src_level = {
 			.level = log_level_lut[level],
 			.domain_id = CONFIG_LOG_DOMAIN_ID,
@@ -416,7 +426,13 @@ int lwm2m_os_at_notif_register_handler(void *context, lwm2m_os_at_cmd_handler_t 
 
 int lwm2m_os_at_cmd_write(const char *const cmd, char *buf, size_t buf_len)
 {
-	return at_cmd_write(cmd, buf, buf_len, (enum at_cmd_state *)NULL);
+	int err;
+
+	k_mutex_lock(&at_mutex, K_FOREVER);
+	err = at_cmd_write(cmd, buf, buf_len, (enum at_cmd_state *)NULL);
+	k_mutex_unlock(&at_mutex);
+
+	return err;
 }
 
 static void at_params_list_get(struct at_param_list *dst, struct lwm2m_os_at_param_list *src)
@@ -605,6 +621,74 @@ int lwm2m_os_at_params_valid_count_get(struct lwm2m_os_at_param_list *list)
 	return err;
 }
 
+/* SMS subscriber module abstraction.*/
+
+/**@brief Forward declaration */
+static lwm2m_os_sms_callback_t lib_sms_callback;
+
+/**
+ * @brief Translate SMS event from the nrf-sdk SMS subscriber module into a LwM2M SMS event.
+ *
+ * @param[in]  data     SMS Subscriber module sms event data.
+ * @param[out] lib_data LwM2M SMS event data.
+ */
+static void sms_evt_translate(struct sms_data *const data, struct lwm2m_os_sms_data *lib_data)
+{
+	/* User data and length of user data. */
+	lib_data->payload_len = data->payload_len;
+	lib_data->payload = data->payload;
+
+	/* App port. */
+	lib_data->header.deliver.app_port.present = data->header.deliver.app_port.present;
+	lib_data->header.deliver.app_port.dest_port = data->header.deliver.app_port.dest_port;
+
+	/* Originator address. */
+	lib_data->header.deliver.originating_address.address_str =
+		data->header.deliver.originating_address.address_str,
+
+	lib_data->header.deliver.originating_address.length =
+		data->header.deliver.originating_address.length;
+}
+
+/**
+ * @brief Callback to direct SMS subscriber module callback
+ *        into our LwM2M carrier library SMS callback.
+ *
+ * @param[in] data    SMS Subscriber module sms event data.
+ * @param[in] context SMS Subscriber module context.
+ */
+static void sms_callback(struct sms_data *const data, void *context)
+{
+	/* Discard non-Deliver events. */
+	if (data->type != SMS_TYPE_DELIVER) {
+		return;
+	}
+	struct lwm2m_os_sms_data lib_sms_data;
+
+	sms_evt_translate(data, &lib_sms_data);
+	lib_sms_callback(&lib_sms_data, context);
+}
+
+int lwm2m_os_sms_client_register(lwm2m_os_sms_callback_t callback, void *context)
+{
+	int ret;
+
+	lib_sms_callback = callback;
+	ret = sms_register_listener(sms_callback, context);
+	if (ret < 0) {
+		lwm2m_os_log(LOG_LEVEL_ERR, "Unable to register as SMS listener");
+		return -1;
+	}
+	lwm2m_os_log(LOG_LEVEL_INF, "Registered as SMS listener");
+	return ret;
+}
+
+void lwm2m_os_sms_client_deregister(int handle)
+{
+	sms_unregister_listener(handle);
+	lwm2m_os_log(LOG_LEVEL_INF, "Deregistered as SMS listener");
+}
+
 /* Download client module abstractions. */
 
 static struct download_client http_downloader;
@@ -614,7 +698,7 @@ int lwm2m_os_download_connect(const char *host, const struct lwm2m_os_download_c
 {
 	struct download_client_cfg config = {
 		.sec_tag = cfg->sec_tag,
-		.apn = cfg->apn,
+		.pdn_id = cfg->pdn_id,
 	};
 
 	return download_client_connect(&http_downloader, host, &config);
@@ -699,6 +783,86 @@ int lwm2m_os_lte_link_down(void)
 int lwm2m_os_lte_power_down(void)
 {
 	return lte_lc_power_off();
+}
+
+int32_t lwm2m_os_lte_mode_get(void)
+{
+	enum lte_lc_system_mode mode;
+
+	(void)lte_lc_system_mode_get(&mode, NULL);
+
+	switch (mode) {
+	case LTE_LC_SYSTEM_MODE_LTEM:
+	case LTE_LC_SYSTEM_MODE_LTEM_GPS:
+		return LWM2M_OS_LTE_MODE_CAT_M1;
+	case LTE_LC_SYSTEM_MODE_NBIOT:
+	case LTE_LC_SYSTEM_MODE_NBIOT_GPS:
+		return LWM2M_OS_LTE_MODE_CAT_NB1;
+	default:
+		return LWM2M_OS_LTE_MODE_NONE;
+	}
+}
+
+/* PDN abstractions */
+
+BUILD_ASSERT(
+	(int)LWM2M_OS_PDN_FAM_IPV4 == (int)PDN_FAM_IPV4 &&
+	(int)LWM2M_OS_PDN_FAM_IPV6 == (int)PDN_FAM_IPV6 &&
+	(int)LWM2M_OS_PDN_FAM_IPV4V6 == (int)PDN_FAM_IPV4V6,
+	"Incompatible enums"
+);
+BUILD_ASSERT(
+	(int)LWM2M_OS_PDN_EVENT_CNEC_ESM == (int)PDN_EVENT_CNEC_ESM &&
+	(int)LWM2M_OS_PDN_EVENT_ACTIVATED == (int)PDN_EVENT_ACTIVATED &&
+	(int)LWM2M_OS_PDN_EVENT_DEACTIVATED == (int)PDN_EVENT_DEACTIVATED &&
+	(int)LWM2M_OS_PDN_EVENT_IPV6_UP == (int)PDN_EVENT_IPV6_UP &&
+	(int)LWM2M_OS_PDN_EVENT_IPV6_DOWN == (int)PDN_EVENT_IPV6_DOWN,
+	"Incompatible enums"
+);
+
+int lwm2m_os_pdn_init(void)
+{
+	return pdn_init();
+}
+
+int lwm2m_os_pdn_ctx_create(uint8_t *cid, lwm2m_os_pdn_event_handler_t cb)
+{
+	return pdn_ctx_create(cid, (pdn_event_handler_t)cb);
+}
+
+int lwm2m_os_pdn_ctx_configure(uint8_t cid, const char *apn, enum lwm2m_os_pdn_fam family)
+{
+	return pdn_ctx_configure(cid, apn, (enum pdn_fam)family, NULL);
+}
+
+int lwm2m_os_pdn_ctx_destroy(uint8_t cid)
+{
+	return pdn_ctx_destroy(cid);
+}
+
+int lwm2m_os_pdn_activate(uint8_t cid, int *esm)
+{
+	return pdn_activate(cid, esm);
+}
+
+int lwm2m_os_pdn_deactivate(uint8_t cid)
+{
+	return pdn_deactivate(cid);
+}
+
+int lwm2m_os_pdn_id_get(uint8_t cid)
+{
+	return pdn_id_get(cid);
+}
+
+int lwm2m_os_pdn_default_apn_get(char *buf, size_t len)
+{
+	return pdn_default_apn_get(buf, len);
+}
+
+int lwm2m_os_pdn_default_callback_set(lwm2m_os_pdn_event_handler_t cb)
+{
+	return pdn_default_callback_set((pdn_event_handler_t)cb);
 }
 
 #ifndef ENOKEY
